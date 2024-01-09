@@ -1,0 +1,93 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  fortytwo_id       Int      @id @unique
+  fortytwo_picture  String?
+  fortytwo_userName String   @unique
+  fortytwo_email    String   @unique
+  pseudo            String   @default("") @db.VarChar(20)
+  refresh_token     String   @default("0")
+  avatar            String   @default("0")
+  isF2Active        Boolean  @default(false)
+  secretOf2FA       String   @default("0")
+  isF2authenticated Boolean  @default(false)
+  xp                Float    @default(0)
+  ratio             Int      @default(0)
+  createdAt         DateTime @default(now())
+  updateAt          DateTime @updatedAt
+  connected         Boolean  @default(false)
+  in_game           Boolean  @default(false)
+  win               Int      @default(0)
+
+  messages      Message[]
+  ownerId       Int?
+  owner         User?     @relation("Ownership", fields: [ownerId], references: [fortytwo_id])
+  ownedUsers    User[]    @relation("Ownership")
+  admins        Channel[] @relation("admins")
+  members       Channel[] @relation("members")
+  muted         Channel[] @relation("muted")
+  banned        Channel[] @relation("banned")
+  invited       Channel[] @relation("invited")
+  friends       Int[]
+  blocked       Int[]
+  ownedChannels Channel[] @relation("OwnedChannels")
+  userChannels  Int[]
+
+  @@map("users")
+}
+
+model Message {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  message String
+
+  owner     User    @relation(fields: [userId], references: [fortytwo_id])
+  userId    Int
+  channel   Channel @relation(fields: [channelId], references: [id])
+  channelId Int
+}
+
+model Channel {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  name     String
+  password String?
+
+  isPassword Boolean @default(false)
+  isDM       Boolean @default(false)
+  isPrivate  Boolean @default(false)
+
+  messages Message[]
+
+  ownerId Int
+  owner   User   @relation("OwnedChannels", fields: [ownerId], references: [fortytwo_id])
+  admins  User[] @relation("admins")
+  members User[] @relation("members")
+  banned  User[] @relation("banned")
+  muted   User[] @relation("muted")
+  invited User[] @relation("invited")
+
+  @@unique([id])
+}
+
+model Game {
+  id            String   @id @default(uuid())
+  winner_id     Int
+  looser_id     Int
+  end_timestamp DateTime
+  score_winner  Int
+  score_looser  Int
+}

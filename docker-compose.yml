@@ -1,0 +1,114 @@
+version: '3.8'
+
+services:
+
+  front_react:
+    image: front_react
+    build: front
+    container_name: front_react
+    volumes:
+     - ./front/src:/app/src
+     - ./front/public:/app/public
+    ports:
+      - "${FRONT_PORT}:5173"
+    networks:
+      - transcendance
+    env_file:
+      - .env
+
+  dev_db:
+    container_name: postgres
+    image: postgres:latest
+    env_file:
+      - .env
+    ports:
+      - "${DB_PORT}:${DB_PORT}"
+    networks:
+      - transcendance
+    volumes:
+      - dev_DB:/var/lib/postgresql/data
+
+  backend:
+    depends_on:
+      - dev_db
+    image: backend
+    build: back
+    container_name: backend
+    volumes:
+      - ./back/prisma:/app/prisma
+      - ./back/src:/app/src
+      - ./back/.prettierrc:/app/.prettierrc
+      - ./back/.nest-cli.json:/app/.nest-cli.json
+    ports:
+      - "${BACK_PORT}:${BACK_PORT}"
+    networks:
+      - transcendance
+    env_file:
+      - .env
+    environment:   # Ajoutez cette ligne pour partager DATABASE_URL avec le service backend
+      DATABASE_URL: ${DATABASE_URL}
+    #command: >
+    #  sh -c "npx prisma migrate dev --name newMigration deploy && npm run start:dev"
+    command: >
+      sh -c "until pg_isready -h dev_db -p ${DB_PORT}; do echo 'Waiting for database to become available...' && sleep 1; done &&
+      npx prisma migrate dev --name newMigration deploy && npm run start:dev"
+    # command: >
+    #   sh -c "until pg_isready -h dev_db -p ${DB_PORT}; do echo 'Waiting for database to become available...' && sleep 1; done &&
+    #   npx prisma migrate deploy && npx prisma generate && npm run start:dev"
+
+networks:
+  transcendance:
+
+volumes:
+  dev_DB:
+
+# backend      | Update the database schema with migrations
+# backend      |
+# backend      | Usage
+# backend      |
+# backend      |   $ prisma migrate [command] [options]
+# backend      |
+# backend      | Commands for development
+# backend      |
+# backend      |          dev   Create a migration from changes in Prisma schema, apply it to the database
+# backend      |                trigger generators (e.g. Prisma Client)
+# backend      |        reset   Reset your database and apply all migrations, all data will be lost
+# backend      |
+# backend      | Commands for production/staging
+# backend      |
+# backend      |       deploy   Apply pending migrations to the database
+# backend      |       status   Check the status of your database migrations
+# backend      |      resolve   Resolve issues with database migrations, i.e. baseline, failed migration, hotfix
+# backend      |
+# backend      | Command for any stage
+# backend      |
+# backend      |         diff   Compare the database schema from two arbitrary sources
+# backend      |
+# backend      | Options
+# backend      |
+# backend      |   -h, --help   Display this help message
+# backend      |     --schema   Custom path to your Prisma schema
+# backend      |
+# backend      | Examples
+# backend      |
+# backend      |   Create a migration from changes in Prisma schema, apply it to the database, trigger generators (e.g. Prisma Client)
+# backend      |   $ prisma migrate dev
+# backend      |
+# backend      |   Reset your database and apply all migrations
+# backend      |   $ prisma migrate reset
+# backend      |
+# backend      |   Apply pending migrations to the database in production/staging
+# backend      |   $ prisma migrate deploy
+# backend      |
+# backend      |   Check the status of migrations in the production/staging database
+# backend      |   $ prisma migrate status
+# backend      |
+# backend      |   Specify a schema
+# backend      |   $ prisma migrate status --schema=./schema.prisma
+# backend      |
+# backend      |   Compare the database schema from two databases and render the diff as a SQL script
+# backend      |   $ prisma migrate diff \
+# backend      |     --from-url "$DATABASE_URL" \
+# backend      |     --to-url "postgresql://login:password@localhost:5432/db" \
+# backend      |     --script
+# backend      |
